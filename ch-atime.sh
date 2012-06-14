@@ -12,12 +12,13 @@
 echo "Enter extention of file you want to change:"
 read EXT
 
+#Get current directory:
 DIR=$(pwd)
 echo $DIR
 
 for file in $DIR/*.$EXT
 do
-  #Get the 
+  #Get the modify time from the same file:
   TIME=$(stat -c%y ${file})
   echo "Changing $file"
   stat $file
