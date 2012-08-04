@@ -2,7 +2,6 @@
 #title          :stund
 #description    :Creates a reverse ssh connection using ssh port fowarding
 #author         :Sergio Aguilar
-#email		      :chekolyn@gmail.com
 #date           :20120731
 #version        :0.1.0    
 #usage          :./stund
