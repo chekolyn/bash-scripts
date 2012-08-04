@@ -1,0 +1,166 @@
+#!/bin/bash 
+#title          :stund
+#description    :Creates a reverse ssh connection using ssh port fowarding
+#author         :Sergio Aguilar
+#email		      :chekolyn@gmail.com
+#date           :20120731
+#version        :0.1.0    
+#usage          :./stund
+#notes          :       
+#bash_version   :4.2.24(1)-release
+#============================================================================
+
+NAME="$(basename "$0")"
+HOSTNAME=host.example.com
+KEY=/path/to/private/sshkey
+USER=userlogin
+
+# Connect command with ssh:
+# -f don't need a terminal go to background, -N dont execute a remote command.
+# -R reverse tunnerl, 222000 is the port to listen on the remote server $HOSTNAME
+# 22 is the local port where ssh is listenting to.
+SSHCONNECT="ssh -f -g -N -R 22000:localhost:22 -i $KEY $USER@$HOSTNAME"
+# Instantiate PID variable
+PID=''
+
+# Format functions:
+bold=`tput bold`
+normal=`tput sgr0`
+
+# Core functions:
+
+#
+# Boolean function to check that the tunnel is working:
+#
+function status {
+
+# Get the PID number; with no echo:
+pidnum > /dev/null
+
+if [[  ($PID != '') && ($PID -gt 1) ]]; then
+  
+  # Look for the PID network connection, verify that the TCP connection state is ESTABLISHED:
+  if [ $(lsof -n -i TCP | grep $PID | grep IPv4 | grep ESTABLISHED | grep -c -v 'grep') -eq 1 ]; then
+    #echo "ssh running and established"
+    return 0
+  fi
+  
+else
+  #echo "not running"
+  return 1
+fi
+
+}
+
+#
+# Echos the process pid number, '' when doesn't exist
+#
+function pidnum {
+
+  PID=$( ps aux | grep "$SSHCONNECT" | grep -v 'grep' | awk '{print $2}' )
+  
+  #echo "pid=$PID"
+  echo $PID
+  
+}
+
+#
+# Starts the Tunnel:
+#
+function do_start {
+  if status ; then
+    echo "There is alreday a tunnel"
+  else
+    echo "Connecting ..."
+    $SSHCONNECT
+      
+    if status; then
+      echo "Connection successful"
+    else
+      echo "ERROR: there was a problem with the ssh connection"
+      exit 1
+    fi
+  fi
+}
+
+#
+# Stops the Tunnel:
+#
+function do_stop {
+  
+  if status; then
+    echo "Stoping..."
+    kill -9 $PID
+  else 
+    echo "Nothing to terminate"
+    exit 1
+  fi
+}
+
+#
+# Report an overview of the tunnel status:
+# pid number, possible connected users, shells, last logins from auth
+#
+function do_fullstatus {
+  
+  etime=$(ps -eo pid,etime | grep $PID | awk '{print $2}')
+  local_ssh_count=$(netstat -tnp 2> /dev/null | grep $PID | grep 127.0.0.1:22 | wc -l)
+  
+  echo "${NAME} (pid $PID) tunnel link UP"
+  echo "Process elapsed= $etime"
+  echo "Currently connected: $local_ssh_count"
+  echo "${bold}-Shells:${normal}"
+  who -a | grep localhost
+  echo "-${bold}Network connections for (pid $PID):${normal}"
+  netstat -tnp 2> /dev/null | grep $PID
+  echo "-${bold}Last localhost ssh logins from auth.log:${normal}"
+  grep "Accepted password for $USER from 127.0.0.1" /var/log/auth.log
+  
+}
+
+case $1 in
+  "start" | "--start")
+    do_start
+  ;;
+    
+  "stop" | "--stop")
+    do_stop
+  ;;
+    
+  "status" | "--status")
+    if status; then
+      echo "${NAME} (pid $PID) tunnel link UP"
+    else
+      echo "${NAME} tunnel link DOWN"
+    fi
+  ;;
+  "pid" | "--pid")
+    if status; then
+      PID=$(pidnum)
+      echo "PID=$PID"
+    else
+      echo "Error: ${NAME} not running no PID to report"
+      exit 1
+    fi
+  ;;
+  
+  "restart" | "--restart")
+    stop
+    start
+  ;;
+  
+  "fullstatus" | "--fullstatus")
+    if status; then
+      do_fullstatus
+    else
+      echo "${NAME} tunnel link DOWN"
+    fi
+  ;;
+  *)
+    echo "Usage: ${NAME} {start|stop|restart|status|fullstatus}"
+  ;;
+esac
+
+exit 0
+
+
