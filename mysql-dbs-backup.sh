@@ -26,10 +26,10 @@ CHMOD="$(which chmod)"
 GZIP="$(which gzip)"
 
 # Backup Dest directory, change this if you have someother location
-DEST="/backup/linhost1"
+DEST="/backup"
 
 # Main directory where backup will be stored
-MBD="$DEST/mysql-rsyncable"
+MBD="$DEST/mysql"
 
 # Get hostname
 HOST="$(hostname)"
